@@ -4,8 +4,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Card } from "@/components/ui/card";
-import { Volume2, Square, Upload, FileText, Image as ImageIcon } from "lucide-react";
+import { Volume2, Square, Upload, FileText, Image as ImageIcon, Save, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 export const TextReader = () => {
   const [text, setText] = useState("Welcome to VoiceLens. Type or paste your text here, or upload a file to convert it into speech.");
@@ -14,7 +19,10 @@ export const TextReader = () => {
   const [pitch, setPitch] = useState([1]);
   const [rate, setRate] = useState([1]);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [saveTitle, setSaveTitle] = useState("");
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     const loadVoices = () => {
@@ -53,7 +61,7 @@ export const TextReader = () => {
     }
   };
 
-  const handleSpeak = () => {
+  const handleSpeak = async () => {
     if (!text.trim()) {
       toast({
         title: "No text to speak",
@@ -76,7 +84,20 @@ export const TextReader = () => {
     utterance.rate = rate[0];
 
     utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
+    utterance.onend = async () => {
+      setIsSpeaking(false);
+      
+      // Track reading history
+      if (user) {
+        await supabase.from('reading_history').insert({
+          user_id: user.id,
+          content_type: 'text',
+          title: text.substring(0, 50) + (text.length > 50 ? '...' : ''),
+          voice_used: voice?.name || 'Default',
+          language: voice?.lang || 'en-US',
+        });
+      }
+    };
     utterance.onerror = () => {
       setIsSpeaking(false);
       toast({
@@ -87,6 +108,51 @@ export const TextReader = () => {
     };
 
     window.speechSynthesis.speak(utterance);
+  };
+
+  const handleSaveAudio = async () => {
+    if (!user) {
+      toast({
+        title: "Login required",
+        description: "Please login to save audio files.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!saveTitle.trim()) {
+      toast({
+        title: "Title required",
+        description: "Please enter a title for your audio.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const voice = voices.find((v) => v.name === selectedVoice);
+    
+    const { error } = await supabase.from('saved_audio').insert({
+      user_id: user.id,
+      title: saveTitle,
+      text_content: text,
+      voice_name: voice?.name || 'Default',
+      language: voice?.lang || 'en-US',
+    });
+
+    if (error) {
+      toast({
+        title: "Save failed",
+        description: "Could not save audio. Please try again.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Saved successfully",
+        description: "Your audio has been saved to your library.",
+      });
+      setSaveDialogOpen(false);
+      setSaveTitle("");
+    }
   };
 
   const handleStop = () => {
@@ -196,6 +262,43 @@ export const TextReader = () => {
           >
             <Square className="w-5 h-5" />
           </Button>
+          
+          <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="h-12 px-6 border-2"
+                disabled={!text.trim()}
+              >
+                <Save className="w-5 h-5" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Save Audio</DialogTitle>
+                <DialogDescription>
+                  Give your audio a title to save it to your library.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Title</Label>
+                  <Input
+                    id="title"
+                    placeholder="My audio recording"
+                    value={saveTitle}
+                    onChange={(e) => setSaveTitle(e.target.value)}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveAudio}>Save</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </Card>
     </div>
