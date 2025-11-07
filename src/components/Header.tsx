@@ -1,8 +1,8 @@
-import { Mic, Contrast, User, LogOut, Library } from "lucide-react";
+import { Mic, Contrast, User, LogOut, Library, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +16,7 @@ export const Header = () => {
   const [isHighContrast, setIsHighContrast] = useState(false);
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const saved = localStorage.getItem("highContrast") === "true";
@@ -45,7 +46,10 @@ export const Header = () => {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80 shadow-sm">
       <div className="container flex h-16 items-center justify-between">
-        <div className="flex items-center gap-3">
+        <button 
+          onClick={() => navigate('/')}
+          className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+        >
           <div className="relative group">
             <div className="absolute inset-0 bg-gradient-to-r from-primary to-accent blur-xl opacity-50 group-hover:opacity-75 transition-opacity rounded-full" />
             <Mic className="relative w-8 h-8 text-primary" />
@@ -56,9 +60,21 @@ export const Header = () => {
             </h1>
             <p className="text-xs text-muted-foreground">Type. Listen. Feel.</p>
           </div>
-        </div>
+        </button>
 
         <div className="flex items-center gap-2">
+          {location.pathname !== '/' && user && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/')}
+              className="gap-2"
+            >
+              <Home className="w-4 h-4" />
+              <span className="hidden sm:inline">Home</span>
+            </Button>
+          )}
+          
           <Button
             variant="outline"
             size="sm"
