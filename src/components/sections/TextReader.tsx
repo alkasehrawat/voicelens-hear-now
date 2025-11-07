@@ -305,22 +305,24 @@ export const TextReader = () => {
         </div>
 
         <div className="flex gap-3 pt-2">
-          <Button
-            onClick={handleSpeak}
-            disabled={isSpeaking}
-            className="flex-1 h-12 text-base font-medium bg-gradient-to-r from-primary to-primary-glow hover:opacity-90 transition-opacity"
-          >
-            <Volume2 className="w-5 h-5 mr-2" />
-            {isSpeaking ? "Speaking..." : "Speak"}
-          </Button>
-          <Button
-            onClick={handleStop}
-            disabled={!isSpeaking}
-            variant="outline"
-            className="h-12 px-6 border-2"
-          >
-            <Square className="w-5 h-5" />
-          </Button>
+          {!isSpeaking ? (
+            <Button
+              onClick={handleSpeak}
+              className="flex-1 h-12 text-base font-medium bg-gradient-to-r from-primary to-primary-glow hover:opacity-90 transition-opacity"
+            >
+              <Volume2 className="w-5 h-5 mr-2" />
+              Speak
+            </Button>
+          ) : (
+            <Button
+              onClick={handleStop}
+              variant="destructive"
+              className="flex-1 h-12 text-base font-medium"
+            >
+              <Square className="w-5 h-5 mr-2" />
+              Stop Speaking
+            </Button>
+          )}
           
           <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
             <DialogTrigger asChild>
