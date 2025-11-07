@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Card } from "@/components/ui/card";
-import { Volume2, Square, Upload, FileText, Image as ImageIcon, Save, Download } from "lucide-react";
+import { Volume2, Square, Upload, FileText, Image as ImageIcon, Save, Download, Sparkles, FileSearch } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,6 +21,7 @@ export const TextReader = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saveTitle, setSaveTitle] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -160,6 +161,46 @@ export const TextReader = () => {
     setIsSpeaking(false);
   };
 
+  const handleAIProcess = async (action: 'enhance' | 'summarize') => {
+    if (!text.trim()) {
+      toast({
+        title: "No text to process",
+        description: "Please enter some text first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-text-processor', {
+        body: { text, action }
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setText(data.result);
+      toast({
+        title: action === 'enhance' ? "Text Enhanced" : "Text Summarized",
+        description: `AI has ${action === 'enhance' ? 'improved' : 'summarized'} your text for better speech output.`,
+      });
+    } catch (error) {
+      console.error('AI processing error:', error);
+      toast({
+        title: "AI Processing Failed",
+        description: error instanceof Error ? error.message : "Could not process text. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="text-center space-y-2">
@@ -176,6 +217,24 @@ export const TextReader = () => {
               Your Text
             </label>
             <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => handleAIProcess('enhance')}
+                disabled={isProcessing || !text.trim()}
+              >
+                <Sparkles className="w-4 h-4 mr-1" />
+                {isProcessing ? "Processing..." : "Enhance"}
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => handleAIProcess('summarize')}
+                disabled={isProcessing || !text.trim()}
+              >
+                <FileSearch className="w-4 h-4 mr-1" />
+                Summarize
+              </Button>
               <Button variant="outline" size="sm" className="relative" asChild>
                 <label>
                   <FileText className="w-4 h-4 mr-1" />
